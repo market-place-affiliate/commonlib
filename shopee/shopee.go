@@ -30,6 +30,23 @@ func NewShopeeRepository(appId, appSecret string) ShopeeRepository {
 	}
 }
 
+func ExtractShopIdAndItemIdFromLink(link string) (string, string, error) {
+	parts := strings.Split(link, "-i.")
+	if len(parts) < 2 {
+		return "", "", fmt.Errorf("invalid link format")
+	}
+
+	idParts := strings.Split(parts[1], ".")
+	if len(idParts) < 2 {
+		return "", "", fmt.Errorf("invalid link format")
+	}
+
+	shopId := idParts[0]
+	itemId := strings.Split(idParts[1], "?")[0]
+
+	return shopId, itemId, nil
+}
+
 func (s *shopeeRepository) GetProductOfferListV2(shopId, itemId string) (ShopeeGetProductOfferList, error) {
 	rawQuery := `
 	{
