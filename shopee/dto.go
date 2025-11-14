@@ -37,3 +37,17 @@ type ShopeeGetProductOfferList struct {
 	} `json:"errors"`
 }
 
+type ShopeeGetShortLink struct {
+	Data struct {
+		GenerateShortLink struct {
+			ShortLink string `json:"shortLink"`
+		} `json:"generateShortLink"`
+	} `json:"data"`
+	Errors []struct {
+		Message    string `json:"message"`
+		Extensions struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+		} `json:"extensions"`
+	} `json:"errors"`
+}

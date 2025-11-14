@@ -107,3 +107,35 @@ func (s *shopeeRepository) GetProductOfferListV2(shopId, itemId string) (ShopeeG
 
 	return response, nil
 }
+
+func (s *shopeeRepository) GetShortLink(originalUrl string,sub [5]string) (ShopeeGetShortLink, error) {
+	query := `
+	mutation {
+		generateShortLink(input:{originUrl:"` + originalUrl + `",subIds:["` + strings.Join(sub[:], `","`) + `"]}){
+			shortLink
+		}
+	}
+	`
+	factor := fmt.Sprint(s.appId, fmt.Sprintf("%d", time.Now().Unix()), query, s.appSecret)
+	var message bytes.Buffer
+	message.WriteString(factor)
+	hash := hmac.New(sha256.New, []byte(s.appSecret))
+	hash.Write(message.Bytes())
+	sign := strings.ToUpper(hex.EncodeToString(hash.Sum(nil)))
+	request := s.restyClient.R()
+	request.SetHeader("Authorization", sign)
+	request.SetHeader("Credential", s.appId)
+	request.SetHeader("Timestamp", fmt.Sprintf("%d", time.Now().Unix()))
+	request.SetBody(map[string]string{
+		"query": query,
+	})
+
+	var response ShopeeGetShortLink
+	request.SetResult(&response)
+	_, err := request.Post("")
+	if err != nil {
+		return ShopeeGetShortLink{}, err
+	}
+
+	return response, nil
+}

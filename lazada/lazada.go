@@ -28,7 +28,7 @@ const (
 
 type LazadaRepository interface {
 	GetProductFeed(page, limit int) (LazadaResponse[[]ProductFeedResponse], error)
-	GetBatchPromoteLink(inputType, inputValue string) (LazadaResponse[BatchPromoteLinkResponse], error)
+	GetBatchPromoteLink(inputType, inputValue string, sub [6]string) (LazadaResponse[BatchPromoteLinkResponse], error)
 }
 
 type lazadaRepository struct {
@@ -103,7 +103,7 @@ func (l *lazadaRepository) GetProductFeed(page, limit int) (LazadaResponse[[]Pro
 	return lazadaResp, err
 }
 
-func (l *lazadaRepository) GetBatchPromoteLink(inputType, inputValue string) (LazadaResponse[BatchPromoteLinkResponse], error) {
+func (l *lazadaRepository) GetBatchPromoteLink(inputType, inputValue string, sub [6]string) (LazadaResponse[BatchPromoteLinkResponse], error) {
 	request := l.restyClient.R()
 	apiPath := "/marketing/getlink"
 	sysParams := map[string]string{
@@ -115,6 +115,12 @@ func (l *lazadaRepository) GetBatchPromoteLink(inputType, inputValue string) (La
 		"userToken":  l.userToken,
 		"inputType":  inputType,
 		"inputValue": inputValue,
+	}
+	for i, v := range sub {
+		if v == "" {
+			continue
+		}
+		apiParams[fmt.Sprintf("sub%d", i+1)] = v
 	}
 
 	keys := []string{}
