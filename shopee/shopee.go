@@ -13,20 +13,21 @@ import (
 )
 
 type ShopeeRepository interface {
-	GetProductOfferListV2(shopId, itemId string) (ShopeeGetProductOfferList, error)
-	GetShortLink(originalUrl string,sub [5]string) (ShopeeGetShortLink, error)
+	GetProductOfferListV2(cred ShopeeCredentials, shopId, itemId string) (ShopeeGetProductOfferList, error)
+	GetShortLink(cred ShopeeCredentials, originalUrl string, sub [5]string) (ShopeeGetShortLink, error)
+}
+
+type ShopeeCredentials struct {
+	AppId     string
+	AppSecret string
 }
 
 type shopeeRepository struct {
-	appId       string
-	appSecret   string
 	restyClient *resty.Client
 }
 
-func NewShopeeRepository(appId, appSecret string) ShopeeRepository {
+func NewShopeeRepository() ShopeeRepository {
 	return &shopeeRepository{
-		appId:       appId,
-		appSecret:   appSecret,
 		restyClient: resty.New().SetBaseURL("https://open-api.affiliate.shopee.co.th/graphql"),
 	}
 }
@@ -48,7 +49,7 @@ func ExtractShopIdAndItemIdFromLink(link string) (string, string, error) {
 	return shopId, itemId, nil
 }
 
-func (s *shopeeRepository) GetProductOfferListV2(shopId, itemId string) (ShopeeGetProductOfferList, error) {
+func (s *shopeeRepository) GetProductOfferListV2(cred ShopeeCredentials, shopId, itemId string) (ShopeeGetProductOfferList, error) {
 	rawQuery := `
 	{
 		productOfferV2(shopId: %s,itemId: %s) {
@@ -85,15 +86,15 @@ func (s *shopeeRepository) GetProductOfferListV2(shopId, itemId string) (ShopeeG
 	}`
 	query := fmt.Sprintf(rawQuery, shopId, itemId)
 
-	factor := fmt.Sprint(s.appId, fmt.Sprintf("%d", time.Now().Unix()), query, s.appSecret)
+	factor := fmt.Sprint(cred.AppId, fmt.Sprintf("%d", time.Now().Unix()), query, cred.AppSecret)
 	var message bytes.Buffer
 	message.WriteString(factor)
-	hash := hmac.New(sha256.New, []byte(s.appSecret))
+	hash := hmac.New(sha256.New, []byte(cred.AppSecret))
 	hash.Write(message.Bytes())
 	sign := strings.ToUpper(hex.EncodeToString(hash.Sum(nil)))
 	request := s.restyClient.R()
 	request.SetHeader("Authorization", sign)
-	request.SetHeader("Credential", s.appId)
+	request.SetHeader("Credential", cred.AppId)
 	request.SetHeader("Timestamp", fmt.Sprintf("%d", time.Now().Unix()))
 	request.SetBody(map[string]string{
 		"query": query,
@@ -109,7 +110,7 @@ func (s *shopeeRepository) GetProductOfferListV2(shopId, itemId string) (ShopeeG
 	return response, nil
 }
 
-func (s *shopeeRepository) GetShortLink(originalUrl string,sub [5]string) (ShopeeGetShortLink, error) {
+func (s *shopeeRepository) GetShortLink(cred ShopeeCredentials, originalUrl string, sub [5]string) (ShopeeGetShortLink, error) {
 	query := `
 	mutation {
 		generateShortLink(input:{originUrl:"` + originalUrl + `",subIds:["` + strings.Join(sub[:], `","`) + `"]}){
@@ -117,15 +118,15 @@ func (s *shopeeRepository) GetShortLink(originalUrl string,sub [5]string) (Shope
 		}
 	}
 	`
-	factor := fmt.Sprint(s.appId, fmt.Sprintf("%d", time.Now().Unix()), query, s.appSecret)
+	factor := fmt.Sprint(cred.AppId, fmt.Sprintf("%d", time.Now().Unix()), query, cred.AppSecret)
 	var message bytes.Buffer
 	message.WriteString(factor)
-	hash := hmac.New(sha256.New, []byte(s.appSecret))
+	hash := hmac.New(sha256.New, []byte(cred.AppSecret))
 	hash.Write(message.Bytes())
 	sign := strings.ToUpper(hex.EncodeToString(hash.Sum(nil)))
 	request := s.restyClient.R()
 	request.SetHeader("Authorization", sign)
-	request.SetHeader("Credential", s.appId)
+	request.SetHeader("Credential", cred.AppId)
 	request.SetHeader("Timestamp", fmt.Sprintf("%d", time.Now().Unix()))
 	request.SetBody(map[string]string{
 		"query": query,
