@@ -14,6 +14,7 @@ import (
 
 type ShopeeRepository interface {
 	GetProductOfferListV2(shopId, itemId string) (ShopeeGetProductOfferList, error)
+	GetShortLink(originalUrl string,sub [5]string) (ShopeeGetShortLink, error)
 }
 
 type shopeeRepository struct {
