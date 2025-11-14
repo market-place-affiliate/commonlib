@@ -27,7 +27,7 @@ const (
 )
 
 type LazadaRepository interface {
-	GetProductFeed(page, limit int) (LazadaResponse[[]ProductFeedResponse], error)
+	GetProductFeed(productId string, page, limit int) (LazadaResponse[[]ProductFeedResponse], error)
 	GetBatchPromoteLink(inputType, inputValue string, sub [6]string) (LazadaResponse[BatchPromoteLinkResponse], error)
 }
 
@@ -51,7 +51,7 @@ func NewLazadaRepository(apiGateway LazadaApiGateway, appKey, appSecret, signMet
 	}
 }
 
-func (l *lazadaRepository) GetProductFeed(page, limit int) (LazadaResponse[[]ProductFeedResponse], error) {
+func (l *lazadaRepository) GetProductFeed(productId string, page, limit int) (LazadaResponse[[]ProductFeedResponse], error) {
 	request := l.restyClient.R()
 	apiPath := "/marketing/product/feed"
 	sysParams := map[string]string{
@@ -62,6 +62,7 @@ func (l *lazadaRepository) GetProductFeed(page, limit int) (LazadaResponse[[]Pro
 	apiParams := map[string]string{
 		"offerType": "1",
 		"userToken": l.userToken,
+		"productId": productId,
 		"page":      fmt.Sprintf("%d", page),
 		"limit":     fmt.Sprintf("%d", limit),
 	}
