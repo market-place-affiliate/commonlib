@@ -63,7 +63,7 @@ func (l *lazadaRepository) GetProductFeed(cred LazadaCredentials, productId stri
 	apiParams := map[string]string{
 		"offerType": "1",
 		"userToken": cred.UserToken,
-		"productId": productId,
+		"productIds": "[" + productId + "]",
 		"page":      fmt.Sprintf("%d", page),
 		"limit":     fmt.Sprintf("%d", limit),
 	}
