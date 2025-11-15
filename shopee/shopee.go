@@ -83,28 +83,29 @@ func (s *shopeeRepository) GetProductOfferListV2(cred ShopeeCredentials, shopId,
 }
 
 func (s *shopeeRepository) GetShortLink(cred ShopeeCredentials, originalUrl string, subid [5]string) (ShopeeGetShortLink, error) {
-	sub := []string{}
+	subStr := ""
 	for _, v := range subid {
 		if v != "" {
-			sub = append(sub, v)
+			subStr += `"` + v + `",`
 		}
 	}
-	query := fmt.Sprintf(`
-mutation {
-	generateShortLink(input:{originUrl:"` + originalUrl + `",subIds:["` + strings.Join(sub[:], `","`) + `"]}){
-		shortLink
-	}
-}`, originalUrl, strings.Join(sub, `","`))
 
-	payloadMap := map[string]string{
-		"query": query,
-	}
+	// 1) GraphQL query
+	gql := fmt.Sprintf(
+		`mutation { generateShortLink(input:{ originUrl:"%s", subIds:[%s] }){ shortLink }}`,
+		originalUrl,
+		strings.TrimRight(subStr, ","),
+	)
 
-	payloadBytes, _ := json.Marshal(payloadMap)
-	payload := string(payloadBytes)
+	// 2) Marshal JSON เพื่อ escape อัตโนมัติ
+	bodyMap := map[string]string{"query": gql}
+	bodyBytes, _ := json.Marshal(bodyMap)
+	payload := string(bodyBytes)
 
+	// 3) Signature
 	timestamp := fmt.Sprintf("%d", time.Now().Unix())
-	factor := fmt.Sprint(cred.AppId, timestamp, query, cred.AppSecret)
+	factor := cred.AppId + timestamp + payload + cred.AppSecret
+
 	hash := sha256.Sum256([]byte(factor))
 	sign := hex.EncodeToString(hash[:])
 
@@ -115,6 +116,7 @@ mutation {
 		sign,
 	)
 
+	// 4) Request
 	request := s.restyClient.R()
 	request.SetHeader("Authorization", authHeader)
 	request.SetContentType("application/json")
@@ -122,12 +124,16 @@ mutation {
 
 	var response ShopeeGetShortLink
 	request.SetResult(&response)
+
 	resp, err := request.Post("")
 	if err != nil {
 		return ShopeeGetShortLink{}, err
 	}
+
 	if s.debug {
-		fmt.Printf("Shopee GetShortLink Response: %+v\n", string(resp.Bytes()))
+		fmt.Printf("Shopee GetShortLink Response: %s\n", resp.String())
 	}
+
 	return response, nil
 }
+
