@@ -39,12 +39,14 @@ type LazadaCredentials struct {
 }
 
 type lazadaRepository struct {
+	debug       bool
 	apiGateway  LazadaApiGateway
 	restyClient *resty.Client
 }
 
-func NewLazadaRepository(apiGateway LazadaApiGateway) LazadaRepository {
+func NewLazadaRepository(apiGateway LazadaApiGateway, debug bool) LazadaRepository {
 	return &lazadaRepository{
+		debug:       debug,
 		apiGateway:  apiGateway,
 		restyClient: resty.New(),
 	}
@@ -95,9 +97,13 @@ func (l *lazadaRepository) GetProductFeed(cred LazadaCredentials, productId stri
 
 	var lazadaResp LazadaResponse[[]ProductFeedResponse]
 	request.SetResult(&lazadaResp)
-	_, err := request.Get(string(l.apiGateway) + apiPath)
+	resp, err := request.Get(string(l.apiGateway) + apiPath)
 	if err != nil {
 		return LazadaResponse[[]ProductFeedResponse]{}, err
+	}
+
+	if l.debug {
+		fmt.Printf("Lazada GetProductFeed Response: %+v\n", string(resp.Bytes()))
 	}
 
 	return lazadaResp, err
@@ -152,10 +158,12 @@ func (l *lazadaRepository) GetBatchPromoteLink(cred LazadaCredentials, inputType
 
 	var lazadaResp LazadaResponse[BatchPromoteLinkResponse]
 	request.SetResult(&lazadaResp)
-	_, err := request.Get(string(l.apiGateway) + apiPath)
+	resp, err := request.Get(string(l.apiGateway) + apiPath)
 	if err != nil {
 		return LazadaResponse[BatchPromoteLinkResponse]{}, err
 	}
-	// log.Println(string(resp.Bytes()))
+	if l.debug {
+		fmt.Printf("Lazada GetBatchPromoteLink Response: %+v\n", string(resp.Bytes()))
+	}
 	return lazadaResp, err
 }

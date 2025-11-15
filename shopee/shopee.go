@@ -23,11 +23,13 @@ type ShopeeCredentials struct {
 }
 
 type shopeeRepository struct {
+	debug       bool
 	restyClient *resty.Client
 }
 
-func NewShopeeRepository() ShopeeRepository {
+func NewShopeeRepository(debug bool) ShopeeRepository {
 	return &shopeeRepository{
+		debug:       debug,
 		restyClient: resty.New().SetBaseURL("https://open-api.affiliate.shopee.co.th/graphql"),
 	}
 }
@@ -102,11 +104,13 @@ func (s *shopeeRepository) GetProductOfferListV2(cred ShopeeCredentials, shopId,
 
 	var response ShopeeGetProductOfferList
 	request.SetResult(&response)
-	_, err := request.Post("")
+	resp, err := request.Post("")
 	if err != nil {
 		return ShopeeGetProductOfferList{}, err
 	}
-
+	if s.debug {
+		fmt.Printf("Shopee GetProductOfferListV2 Response: %+v\n", string(resp.Bytes()))
+	}
 	return response, nil
 }
 
@@ -134,10 +138,12 @@ func (s *shopeeRepository) GetShortLink(cred ShopeeCredentials, originalUrl stri
 
 	var response ShopeeGetShortLink
 	request.SetResult(&response)
-	_, err := request.Post("")
+	resp, err := request.Post("")
 	if err != nil {
 		return ShopeeGetShortLink{}, err
 	}
-
+	if s.debug {
+		fmt.Printf("Shopee GetShortLink Response: %+v\n", string(resp.Bytes()))
+	}
 	return response, nil
 }
