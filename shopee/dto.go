@@ -22,19 +22,18 @@ type ShopeeGetProductOfferList struct {
 				RatingStar           string `json:"ratingStar"`
 				PriceDiscountRate    int    `json:"priceDiscountRate"`
 				ShopID               int    `json:"shopId"`
-				ShopType             int    `json:"shopType"`
+				ShopType             []int  `json:"shopType"`
 				SellerCommissionRate string `json:"sellerCommissionRate"`
 				ShopeeCommissionRate string `json:"shopeeCommissionRate"`
 			} `json:"nodes"`
+			PageInfo struct {
+				Page        int         `json:"page"`
+				Limit       int         `json:"limit"`
+				HasNextPage bool        `json:"hasNextPage"`
+				ScrollID    interface{} `json:"scrollId"`
+			} `json:"pageInfo"`
 		} `json:"productOfferV2"`
 	} `json:"data"`
-	Errors []struct {
-		Message    string `json:"message"`
-		Extensions struct {
-			Code    int    `json:"code"`
-			Message string `json:"message"`
-		} `json:"extensions"`
-	} `json:"errors"`
 }
 
 type ShopeeGetShortLink struct {

@@ -1,10 +1,9 @@
 package shopee
 
 import (
-	"bytes"
-	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -52,55 +51,24 @@ func ExtractShopIdAndItemIdFromLink(link string) (string, string, error) {
 }
 
 func (s *shopeeRepository) GetProductOfferListV2(cred ShopeeCredentials, shopId, itemId string) (ShopeeGetProductOfferList, error) {
-	rawQuery := `
-	{
-		productOfferV2(shopId: %s,itemId: %s) {
-			nodes {
-				productName
-				itemId
-				commissionRate
-				commission
-				price
-				sales
-				imageUrl
-				shopName
-				productLink
-				offerLink
-				periodStartTime
-				periodEndTime
-				priceMin
-				priceMax
-				productCatIds
-				ratingStar
-				priceDiscountRate
-				shopId
-				shopType
-				sellerCommissionRate
-				shopeeCommissionRate
-			}
-			pageInfo {
-				page
-				limit
-				hasNextPage
-				scrollId
-			}
-		}
-	}`
+	rawQuery := `{"query":"{ productOfferV2(shopId: %s, itemId: %s) { nodes { productName itemId commissionRate commission price sales imageUrl shopName productLink offerLink periodStartTime periodEndTime priceMin priceMax productCatIds ratingStar priceDiscountRate shopId shopType sellerCommissionRate shopeeCommissionRate } pageInfo { page limit hasNextPage scrollId } } }"}`
 	query := fmt.Sprintf(rawQuery, shopId, itemId)
+	timestamp := fmt.Sprintf("%d", time.Now().Unix())
+	factor := fmt.Sprint(cred.AppId, timestamp, query, cred.AppSecret)
+	hash := sha256.Sum256([]byte(factor))
+	sign := hex.EncodeToString(hash[:])
 
-	factor := fmt.Sprint(cred.AppId, fmt.Sprintf("%d", time.Now().Unix()), query, cred.AppSecret)
-	var message bytes.Buffer
-	message.WriteString(factor)
-	hash := hmac.New(sha256.New, []byte(cred.AppSecret))
-	hash.Write(message.Bytes())
-	sign := strings.ToUpper(hex.EncodeToString(hash.Sum(nil)))
+	authHeader := fmt.Sprintf(
+		"SHA256 Credential=%s, Timestamp=%s, Signature=%s",
+		cred.AppId,
+		timestamp,
+		sign,
+	)
+
 	request := s.restyClient.R()
-	request.SetHeader("Authorization", sign)
-	request.SetHeader("Credential", cred.AppId)
-	request.SetHeader("Timestamp", fmt.Sprintf("%d", time.Now().Unix()))
-	request.SetBody(map[string]string{
-		"query": query,
-	})
+	request.SetHeader("Authorization", authHeader)
+	request.SetContentType("application/json")
+	request.SetBody(query)
 
 	var response ShopeeGetProductOfferList
 	request.SetResult(&response)
@@ -114,27 +82,43 @@ func (s *shopeeRepository) GetProductOfferListV2(cred ShopeeCredentials, shopId,
 	return response, nil
 }
 
-func (s *shopeeRepository) GetShortLink(cred ShopeeCredentials, originalUrl string, sub [5]string) (ShopeeGetShortLink, error) {
-	query := `
-	mutation {
-		generateShortLink(input:{originUrl:"` + originalUrl + `",subIds:["` + strings.Join(sub[:], `","`) + `"]}){
-			shortLink
+func (s *shopeeRepository) GetShortLink(cred ShopeeCredentials, originalUrl string, subid [5]string) (ShopeeGetShortLink, error) {
+	sub := []string{}
+	for _, v := range subid {
+		if v != "" {
+			sub = append(sub, v)
 		}
 	}
-	`
-	factor := fmt.Sprint(cred.AppId, fmt.Sprintf("%d", time.Now().Unix()), query, cred.AppSecret)
-	var message bytes.Buffer
-	message.WriteString(factor)
-	hash := hmac.New(sha256.New, []byte(cred.AppSecret))
-	hash.Write(message.Bytes())
-	sign := strings.ToUpper(hex.EncodeToString(hash.Sum(nil)))
-	request := s.restyClient.R()
-	request.SetHeader("Authorization", sign)
-	request.SetHeader("Credential", cred.AppId)
-	request.SetHeader("Timestamp", fmt.Sprintf("%d", time.Now().Unix()))
-	request.SetBody(map[string]string{
+	query := fmt.Sprintf(`
+mutation {
+	generateShortLink(input:{originUrl:"` + originalUrl + `",subIds:["` + strings.Join(sub[:], `","`) + `"]}){
+		shortLink
+	}
+}`, originalUrl, strings.Join(sub, `","`))
+
+	payloadMap := map[string]string{
 		"query": query,
-	})
+	}
+
+	payloadBytes, _ := json.Marshal(payloadMap)
+	payload := string(payloadBytes)
+
+	timestamp := fmt.Sprintf("%d", time.Now().Unix())
+	factor := fmt.Sprint(cred.AppId, timestamp, query, cred.AppSecret)
+	hash := sha256.Sum256([]byte(factor))
+	sign := hex.EncodeToString(hash[:])
+
+	authHeader := fmt.Sprintf(
+		"SHA256 Credential=%s, Timestamp=%s, Signature=%s",
+		cred.AppId,
+		timestamp,
+		sign,
+	)
+
+	request := s.restyClient.R()
+	request.SetHeader("Authorization", authHeader)
+	request.SetContentType("application/json")
+	request.SetBody(payload)
 
 	var response ShopeeGetShortLink
 	request.SetResult(&response)
